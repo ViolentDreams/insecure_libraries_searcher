@@ -230,12 +230,14 @@ class PackagesInsecureSource:
             return result
 
 
-client = GithubClient(repo_url='https://github.com/diademoff/2ch')
+client = GithubClient(repo_url='https://github.com/PyGithub/PyGithub/tree/main')
 source = PackagesSource(client=client)
 requirement_libraries = source.get_libraries()
 insecurity_source = PackagesInsecureSource(client=client)
 insecurity_libraries = insecurity_source.get_libraries()
 for insecure_library in insecurity_libraries:
-    print(f'\n=============== {insecure_library.name} ===============')
-    for vulnerability in insecure_library.vulnerabilities:
-        print(vulnerability.advisory + '\n')
+    for requirement_library in requirement_libraries:
+        vulnerability_packages = insecure_library.match_vulnerability(package=requirement_library)
+        if vulnerability_packages:
+            for package in vulnerability_packages:
+                print(package.advisory)
