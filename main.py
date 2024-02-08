@@ -95,44 +95,41 @@ class LibraryPackage:
     def __str__(self):
         return f'{self.name} {self.delimeter} {self.version}'
 
-    def __eq__(self, other):
+    def __contains__(self, item):
         if self.delimeter == '==':
 
-            if other.delimeter == '>=':
-                return self.version >= other.version
-            elif other.delimeter == '>':
-                return self.version > other.version
-            elif other.delimeter == '<=':
-                return self.version <= other.version
-            elif other.delimeter == '<':
-                return self.version < other.version
+            if item.delimeter == '>=':
+                return self.version >= item.version
+            elif item.delimeter == '>':
+                return self.version > item.version
+            elif item.delimeter == '<=':
+                return self.version <= item.version
+            elif item.delimeter == '<':
+                return self.version < item.version
 
         else:
 
-            if (other.delimeter == '>=' or other.delimeter == '>') and (
+            if (item.delimeter == '>=' or item.delimeter == '>') and (
                     self.delimeter == '>=' or self.delimeter == '>'):
                 return True
-            if (other.delimeter == '<=' or other.delimeter == '<') and (
+            if (item.delimeter == '<=' or item.delimeter == '<') and (
                     self.delimeter == '<=' or self.delimeter == '<'):
                 return True
 
-            if other.delimeter == '<=' and self.delimeter == '>=':
-                return self.version <= other.version
-            if other.delimeter == '>=' and self.delimeter == '<=':
-                return self.version >= other.version
+            if item.delimeter == '<=' and self.delimeter == '>=':
+                return self.version <= item.version
+            if item.delimeter == '>=' and self.delimeter == '<=':
+                return self.version >= item.version
 
-            if (other.delimeter == '<' or other.delimeter == '<=') and self.delimeter == '>':
-                return self.version < other.version
-            if (other.delimeter == '>' or other.delimeter == '>=') and self.delimeter == '<':
-                return self.version > other.version
+            if (item.delimeter == '<' or item.delimeter == '<=') and self.delimeter == '>':
+                return self.version < item.version
+            if (item.delimeter == '>' or item.delimeter == '>=') and self.delimeter == '<':
+                return self.version > item.version
 
-            if other.delimeter == '<' and (self.delimeter == '>=' or self.delimeter == '>'):
-                return self.version < other.version
-            if other.delimeter == '>' and (self.delimeter == '<=' or self.delimeter == '<'):
-                return self.version > other.version
-
-    def __ne__(self, other):
-        return not self.__eq__(other=other)
+            if item.delimeter == '<' and (self.delimeter == '>=' or self.delimeter == '>'):
+                return self.version < item.version
+            if item.delimeter == '>' and (self.delimeter == '<=' or self.delimeter == '<'):
+                return self.version > item.version
 
 
 class Vulnerability:
@@ -150,9 +147,9 @@ class Vulnerability:
         self.version_limits = []
         self._get_version_limits(specs=specs)
 
-    def __eq__(self, other):
+    def __contains__(self, item):
         for limit in self.version_limits:
-            if limit != other:
+            if not (item in limit):
                 return
         return True
 
@@ -180,14 +177,14 @@ class InsecureLibrary:
         self.name = name
         self.vulnerabilities = []
 
-    def _add_vulnerability(self, advisory, specs):
+    def add_vulnerability(self, advisory, specs):
         self.vulnerabilities.append(Vulnerability(name=self.name, advisory=advisory, specs=specs))
 
     def match_vulnerability(self, lib_package):
         if lib_package.name == self.name:
             result = []
             for vulnerability in self.vulnerabilities:
-                if vulnerability == lib_package:
+                if lib_package in vulnerability:
                     result.append(vulnerability)
             if result:
                 return result
@@ -238,14 +235,14 @@ class InsecureLibrariesSource:
             if name in self.INSECURE_FULL_CATALOGUE:
                 insecure_package = InsecureLibrary(name=name)
                 for vulnerability in self.INSECURE_FULL_CATALOGUE[name]:
-                    insecure_package._add_vulnerability(advisory=vulnerability['advisory'],
-                                                        specs=vulnerability['specs'])
+                    insecure_package.add_vulnerability(advisory=vulnerability['advisory'],
+                                                       specs=vulnerability['specs'])
                 result.append(insecure_package)
         if result:
             return result
 
 
-client = GithubClient(repo_url='https://github.com/PyGithub/PyGithub/tree/main')
+client = GithubClient(repo_url='https://github.com/PyGithub/PyGithub')
 
 insecurity_source = InsecureLibrariesSource()
 insecurity_libraries = insecurity_source.get_libraries(requirement_libs_list=client.requirements_list)
@@ -254,10 +251,11 @@ vulnerabilities = []
 for insecure_library in insecurity_libraries:
     for requirement_library in client.requirements_list:
         if insecure_library.name == requirement_library.name:
-            vulnerabilities.extend(insecure_library.match_vulnerability(lib_package=requirement_library))
+            match = insecure_library.match_vulnerability(lib_package=requirement_library)
+            if match:
+                vulnerabilities.extend(match)
 
 if vulnerabilities:
     for package in vulnerabilities:
-        print(package.advisory)
+        print(package.advisory, end='')
         print('\n')
-                
